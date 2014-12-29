@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <title><%= title %></title>
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <script type="text/javascript" src='/socket.io/socket.io.js'></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function (){
+      var socket = io.connect();
+      var name = '';
+      var id = '';
+
+      // listen for server requesting new user name
+      socket.on('prompt_for_name', function (data){
+        console.log('prompt_for_name...', data);
+        id = data.id;
+        name = prompt('What is your name?');
+        if(name){
+          // emit user name to server
+          socket.emit('new_user_name', { name: name, id: id });
+        }
+      });
+
+      // listen for server to broadcast new user in chat
+      socket.on('new_user', function (data){
+        console.log('new user', data);
+        $('#my_messages').append('<p>' + data + ' has joined this chat.</p>');
+      });
+
+      // listen for all user messages
+      socket.on('user_messages', function (data){
+        var i;
+        $('#my_messages').html('');
+        for(i = 0; i < data['messages'].length; i += 1){
+          console.log('user_messages data["messages"][0]', data['messages'][i]);
+          $('#my_messages').append('<p>' + data['messages'][i]['user'] + ': ' + data['messages'][i]['message'] + '</p>');
+        }
+      });
+
+      // listen for server to broadcast user leaving chat
+      socket.on('user_departed', function (data){
+        console.log('user_departed data', data);
+        $('#my_messages').append('<p>' + data + ' has left the chat</p>');
+      });
+
+      // emit new chat message form via socket
+      $('#chat_form').on('submit', function (e){
+        var msg;
+        e.preventDefault();
+        msg = $('#new_chat_message').val();
+        socket.emit('new_chat_message', { name: name, message: msg });
+        $('#new_chat_message').val('');
+      });
+
+      // listen for new chat message
+      socket.on('new_message', function (data){
+        console.log('new_message', data);
+        $('#my_messages').append('<p>' + data.user + ': ' + data.message + '</p>')
+      });
+
+    });
+  </script>
+</head>
+
+<body>
+
+  <h1><%= title %></h1>
+
+  <div id='my_messages'></div>
+
+  <div id='submit_chat'>
+    <form action='/chat/new' method='post' id='chat_form'>
+      <textarea name='chat_message' id='new_chat_message'></textarea>
+      <input type='submit' value='New Chat' />
+    </form>
+  </div>
+</body>
+</html>
